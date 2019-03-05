@@ -408,7 +408,14 @@ class Metro_Sitemap {
 	 */
 	public static function get_post_ids_for_date( $sitemap_date, $limit = 500, $post_type = '' ) {
 		global $wpdb;
-
+		
+		if ( ALLOW_FROM_DATE  && ALLOW_FROM_POST_TYPE && $post_type === ALLOW_FROM_POST_TYPE ){
+			$sitemap_date_timestamp       = strtotime( $sitemap_date );
+			$allow_from_date_timestamp    = strtotime( ALLOW_FROM_DATE );
+			if($sitemap_date_timestamp < $allow_from_date_timestamp ){
+				return false;
+			}
+		}
 		$start_date = $sitemap_date . ' 00:00:00';
 		$end_date = $sitemap_date . ' 23:59:59';
 		$post_types_in = empty( $post_type ) ? self::get_supported_post_types_in() : $wpdb->prepare( '%s', $post_type );
@@ -441,7 +448,7 @@ class Metro_Sitemap {
 			'post_status' => 'publish',
 			'post_date' => $sitemap_date,
 			);
-
+	
 		$sitemap_id = $wpdb->get_var( $wpdb->prepare( "SELECT ID FROM $wpdb->posts WHERE post_type = %s AND post_name = %s LIMIT 1", self::SITEMAP_CPT, $sitemap_name ) );
 
 		if ( $sitemap_id ) {
@@ -536,7 +543,7 @@ class Metro_Sitemap {
 		wp_reset_postdata();
 	}
 
-	public static function delete_sitemap_for_date( $sitemap_date, $post_type ) {
+	public static function delete_sitemap_for_date( $sitemap_date, $post_type = '') {
 		list( $year, $month, $day ) = explode( '-', $sitemap_date );
 		$sitemap_id = self::get_sitemap_post_id( $year, $month, $day, $post_type );
 		if ( ! $sitemap_id ) {
@@ -689,10 +696,13 @@ class Metro_Sitemap {
 		// Sometimes duplicate sitemaps exist, lets make sure so they are not output
 		// $sitemaps = array_unique( $sitemaps );
 
-		$sitemaps = [];
-
+		$sitemaps  =  [];
+		$post_type = ( get_query_var( 'post_type' ) )? get_query_var( 'post_type' ) : false ;
 		foreach ( $wpdb->get_results($query) as $result ) {
 			if ( isset( $sitemaps[$result->post_name] ) && $sitemaps[$result->post_name] === $result->post_date ) {
+				continue;
+			}
+			if ( $post_type  && ( strpos($result->post_name, $post_type . '-') === false) ){
 				continue;
 			}
 			$sitemaps[$result->post_name] = $result->post_date;

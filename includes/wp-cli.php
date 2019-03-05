@@ -21,6 +21,9 @@ class Metro_Sitemap_CLI extends WP_CLI_Command {
 	 * @subcommand generate-sitemap
 	 */
 	function generate_sitemap( $args, $assoc_args ) {
+
+		$this->get_videos_from_assoc_args( $assoc_args );
+
 		$this->command = 'all';
 
 		$all_years_with_posts = Metro_Sitemap::check_year_has_posts();
@@ -43,6 +46,9 @@ class Metro_Sitemap_CLI extends WP_CLI_Command {
 	 * @subcommand generate-sitemap-for-year
 	 */
 	function generate_sitemap_for_year( $args, $assoc_args ) {
+
+		$this->get_videos_from_assoc_args( $assoc_args );
+
 		if ( empty( $this->command ) )
 			$this->command = 'year';
 
@@ -82,6 +88,9 @@ class Metro_Sitemap_CLI extends WP_CLI_Command {
 	 * @subcommand generate-sitemap-for-year-month
 	 */
 	function generate_sitemap_for_year_month( $args, $assoc_args ) {
+
+		$this->get_videos_from_assoc_args( $assoc_args );
+
 		if ( empty( $this->command ) )
 			$this->command = 'month';
 
@@ -130,6 +139,9 @@ class Metro_Sitemap_CLI extends WP_CLI_Command {
 	 * @subcommand generate-sitemap-for-year-month-day
 	 */
 	function generate_sitemap_for_year_month_day( $args, $assoc_args ) {
+
+		$this->get_videos_from_assoc_args( $assoc_args );
+		
 		if ( empty( $this->command ) )
 			$this->command = 'day';
 
@@ -244,5 +256,50 @@ class Metro_Sitemap_CLI extends WP_CLI_Command {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Checks additional parameters to generate sitemap for particular post type from particular year and month.
+	 *
+	 * Defining a variable with post type and start date to pickup videos sitemap urls.
+	 *
+	 * @input associated arguments
+	 */
+	public function get_videos_from_assoc_args( $assoc_args ) {
+		if( defined ( 'ALLOW_FROM_POST_TYPE' ) && defined ( 'ALLOW_FROM_DATE' ) ) {
+			return true;
+		} else {
+			$assoc_args = wp_parse_args( $assoc_args, array(
+				'allow-post-type-from' => false,
+				'post-type'            => false,
+				'year'                 => false,
+				'month'                => false,
+			) );
+
+			if( $assoc_args['allow-post-type-from'] ){
+				if ( ! $assoc_args['post-type'] ) {
+					WP_CLI::error( "Specify --post-type" );
+				}
+				if ( ! post_type_exists( $assoc_args['post-type'] ) ) {
+				   WP_CLI::error( "Invalid post-type" );
+				}
+				if ( ! $assoc_args['year'] ) {
+					WP_CLI::error( "Specify --year" );
+				}
+				if ( ! $assoc_args['month'] ) {
+					WP_CLI::error( "Specify --month" );
+				}
+				$valid = $this->validate_year_month( $assoc_args['year'], $assoc_args['month'] );
+				if ( is_wp_error( $valid ) ){
+					WP_CLI::error( $valid->get_error_message() );
+				}
+				define('ALLOW_FROM_POST_TYPE', $assoc_args['post-type'] );
+				define('ALLOW_FROM_DATE', $assoc_args['year'] . '-' . $assoc_args['month'] . '-1' );
+			} else {
+				define('ALLOW_FROM_POST_TYPE', FALSE);
+				define('ALLOW_FROM_DATE', FALSE );
+			}
+
+		}
 	}
 }
