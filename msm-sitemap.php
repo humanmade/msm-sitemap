@@ -83,6 +83,16 @@ class Metro_Sitemap {
 	 * Setup rewrite rules for the sitemap
 	 */
 	public static function sitemap_rewrite_init() {
+
+		$args = [
+			'type' => 'string',
+			'sanitize_callback' => 'sanitize_text_field',
+			'default' => null,
+		];
+		register_setting( 'metro-sitemap', 'sitemap_video_year', $args );
+		register_setting( 'metro-sitemap', 'sitemap_video_month', $args );
+
+
 		// Allow 'sitemap=true' parameter
 		add_rewrite_tag( '%sitemap%', 'true' );
 
@@ -174,7 +184,11 @@ class Metro_Sitemap {
 				break;
 			}
 		}
-
+		 if ( isset( $_GET['settings-updated'] ) ) { // phpcs:ignore ?>
+			<div class="notice notice-success is-dismissible">
+				<p><?php echo esc_html__( 'Done!' ); ?></p>
+			</div>
+		<?php } 
 		// All the settings we need to read to display the page
 		$sitemap_create_in_progress = get_option( 'msm_sitemap_create_in_progress' ) === true;
 		$sitemap_update_last_run = get_option( 'msm_sitemap_update_last_run' );
@@ -207,6 +221,25 @@ class Metro_Sitemap {
 		</form>
 		</div>
 		<div id="tooltip"><strong class="content"></strong> <?php esc_html_e( 'indexed urls', 'metro-sitemaps' ); ?></div>
+
+		<div style="display: table;width: 100%;">
+			<h3>Select Videos From Date</h3>
+			<form action="options.php" method="post">
+				<table>
+					<?php settings_fields( 'metro-sitemap' ); ?>
+					<?php do_settings_sections( 'metro-sitemap' ); ?>
+					
+					<tr>
+						<th>Year</th>
+						<td><input type="text" pattern="\d{4}" title="Please Enter Valid Year" name="sitemap_video_year" style="width:75px;margin:0 auto;" placeholder="yyyy" value="<?php echo esc_attr( get_option( 'sitemap_video_year' ) );?>"></td>
+						<th>Month</th>
+						<td><input type="text" pattern="(0[1-9]|1[012])" title="Please Enter Valid Month" name="sitemap_video_month" style="width:50px;margin:0 auto;" placeholder="mm" value="<?php echo esc_attr( get_option( 'sitemap_video_month' ) );?>"></td>
+						<td><?php submit_button('Save'); ?></td>
+					</tr>
+				</table>
+			</form>
+		</div>
+		
 		<?php
 	}
 
@@ -709,7 +742,17 @@ class Metro_Sitemap {
 		}
 
 		$xml = new SimpleXMLElement( $xml_prefix . '<sitemapindex xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></sitemapindex>' );
+		$ms_sitemap_videos_from_year = ( int ) get_option('sitemap_video_year');
+		$ms_sitemap_videos_from_month = ( int ) get_option('sitemap_video_month');
+
 		foreach ( $sitemaps as $sitemap_date ) {
+			if( $post_type === 'videos' && $ms_sitemap_videos_from_year && $ms_sitemap_videos_from_month ) {
+			 	$sitemap_date_timestamp       = strtotime( $sitemap_date );
+			 	$allow_from_date_timestamp    = strtotime( $ms_sitemap_videos_from_year.'-'.$ms_sitemap_videos_from_month.'-1' );
+		 			if($sitemap_date_timestamp < $allow_from_date_timestamp ){
+			 			continue;
+			 		}
+			 }
 			$sitemap = $xml->addChild( 'sitemap' );
 			$sitemap->loc = self::build_sitemap_url( $sitemap_date ); // manually set the child instead of addChild to prevent "unterminated entity reference" warnings due to encoded ampersands http://stackoverflow.com/a/555039/169478
 		}
