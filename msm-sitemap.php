@@ -442,13 +442,6 @@ class Metro_Sitemap {
 	public static function get_post_ids_for_date( $sitemap_date, $limit = 500, $post_type = '' ) {
 		global $wpdb;
 		
-		if ( ALLOW_FROM_DATE  && ALLOW_FROM_POST_TYPE && $post_type === ALLOW_FROM_POST_TYPE ){
-			$sitemap_date_timestamp       = strtotime( $sitemap_date );
-			$allow_from_date_timestamp    = strtotime( ALLOW_FROM_DATE );
-			if($sitemap_date_timestamp < $allow_from_date_timestamp ){
-				return false;
-			}
-		}
 		$start_date = $sitemap_date . ' 00:00:00';
 		$end_date = $sitemap_date . ' 23:59:59';
 		$post_types_in = empty( $post_type ) ? self::get_supported_post_types_in() : $wpdb->prepare( '%s', $post_type );
