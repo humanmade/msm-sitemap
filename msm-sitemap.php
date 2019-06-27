@@ -623,21 +623,33 @@ class Metro_Sitemap {
 	 * @return object[] modified posts
 	 */
 	public static function get_last_modified_posts() {
-		global $wpdb;
+        global $wpdb;
+        
+        $sitemap_last_run = get_option( 'msm_sitemap_update_last_run', false );
 
-		$sitemap_last_run = get_option( 'msm_sitemap_update_last_run', false );
+        $date = date( 'Y-m-d H:i:s', ( current_time( 'timestamp', 1 ) - 3600 ) ); // posts changed within the last hour
 
-		$date = date( 'Y-m-d H:i:s', ( current_time( 'timestamp', 1 ) - 3600 ) ); // posts changed within the last hour
+        if ( $sitemap_last_run ) {
+            $date = date( 'Y-m-d H:i:s', $sitemap_last_run );
+        }
 
-		if ( $sitemap_last_run ) {
-			$date = date( 'Y-m-d H:i:s', $sitemap_last_run );
-		}
+        $post_types_in = self::get_supported_post_types_in();
+                $count_posts = $wpdb->get_var( $wpdb->prepare( "SELECT count(*) as total FROM $wpdb->posts WHERE post_type IN ( {$post_types_in} ) AND post_modified_gmt >= %s ", $date) );
 
-		$post_types_in = self::get_supported_post_types_in();
+                if ( $count_posts > 1000 ) {
+                    $count_posts = 1000;
+                }
 
-		$modified_posts = $wpdb->get_results( $wpdb->prepare( "SELECT ID, post_date FROM $wpdb->posts WHERE post_type IN ( {$post_types_in} ) AND post_modified_gmt >= %s LIMIT 1000", $date ) );
-		return $modified_posts;
-	}
+                $modified_posts = array();
+                for($i=0; $i < $count_posts; $i+=100)
+                {
+                    $m_posts = $wpdb->get_results( $wpdb->prepare( "SELECT ID, post_date FROM $wpdb->posts WHERE post_type IN ( {$post_types_in} ) AND post_modified_gmt >= %s LIMIT $i,100", $date ) );
+
+                    $modified_posts = array_merge($modified_posts,$m_posts);
+
+                }
+            return $modified_posts;
+        }
 
 	/**
 	 * Get dates for an array of posts
